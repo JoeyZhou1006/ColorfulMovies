@@ -8,49 +8,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['color'])) {
     $movieSearchWebServiceUrl = str_replace("{color}", $_POST['color'], $movieSearchWebServiceUrl);
     $movieSearchWebServiceUrl = str_replace("{apiKey}", $apiKey, $movieSearchWebServiceUrl);
 
-    searchMovies($movieSearchWebServiceUrl);
+    //Fetching the template for building list of movie cards for display
+    $templatefile = 'movieCard.tpl';
+    $template = file_get_contents($templatefile);
+
+    searchMovies($movieSearchWebServiceUrl, $template);
 
 }else{
     echo "Unexpected Error";
 }
 
+/**
+ * Function that accepts the query string and template file to do the restful calls for movie searching
+ * @param   movieSourceUrl  the web service content provider url for movie searching
+ * @param   movieItemTemplate The template file that are used for rendering single movie item card for display
+ * @return      array 
+ */
+function searchMovies($movieSourceUrl, $movieItemTemplate){
+    
+    //The final output array to be sent out 
+    $output = array();
+    //Building block of a single movie bootstrap html card
+    $singleMovieCard = "";
 
-
-
-//Function that accepts the query string to do the restful calls 
-function searchMovies($movieSourceUrl){
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_POST, 1);
     curl_setopt($curl, CURLOPT_POSTFIELDS, $searchParameters);
     curl_setopt($curl, CURLOPT_URL, $movieSourceUrl);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-
     $result = curl_exec($curl);
-    $decodedResult = json_decode($result,true);
-    
-    $searchResult = $decodedResult['Search'];
-
-
-    //Simple inbuilt template engine
-    $template = "<div class=\"card\" style=\"width: 18rem;\">
-    <img class=\"card-img-top\" src=\"{MovieImage}\" alt=\"Card image cap\">
-    <div class=\"card-body\">
-        <h5 class=\"card-title\">{movieTitle}</h5>
-   
-      <p class=\"card-text\">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-    </div>
-  </div>";
-
-    $output = str_replace("{movieTitle}", $searchResult['0']['Title'], $template);
-    $output = str_replace("{MovieImage}", $searchResult['0']['Poster'], $output);
-    $output = str_replace("{year}", $searchResult['0']['Year'], $output);
-
     curl_close($curl);
 
-    var_dump($output);
+    $decodedResult = json_decode($result,true);
+    $searchResult = $decodedResult['Search'];
 
+    //Building the output html for display
+    foreach($searchResult as $movieItem){
+
+        $singleMovieCard = str_replace("{movieTitle}", $movieItem['Title'], $movieItemTemplate);
+        $singleMovieCard = str_replace("{MovieImage}", $movieItem['Poster'], $singleMovieCard);
+        $singleMovieCard = str_replace("{movieYear}", $movieItem['Year'], $singleMovieCard);
+        $singleMovieCard = str_replace("{backgroundColor}", $_POST['color'], $singleMovieCard);
+        array_push($output, $singleMovieCard);
+
+    }
+
+    echo(htmlentities(implode(" ",$output)));
 }
-
-
 
 ?>
